@@ -43,7 +43,7 @@ TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf64-big' 
 	then echo 'riscv64-unknown-elf-'; \
 	elif riscv64-linux-gnu-objdump -i 2>&1 | grep 'elf64-big' >/dev/null 2>&1; \
 	then echo 'riscv64-linux-gnu-'; \
-	else echo "no-toolchain-found-" fi)
+	else echo "no-toolchain-found-"; fi)
 endif
 
 QEMU = qemu-system-riscv64
