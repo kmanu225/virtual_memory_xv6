@@ -150,11 +150,11 @@ writetest(char *s)
   }
   for(i = 0; i < N; i++){
     if(write(fd, "aaaaaaaaaa", SZ) != SZ){
-      printf("%s: error: write aa %d new file failed\n", i);
+      printf("%s: error: write aa %d new file failed\n", s, i);
       exit(1);
     }
     if(write(fd, "bbbbbbbbbb", SZ) != SZ){
-      printf("%s: error: write bb %d new file failed\n", i);
+      printf("%s: error: write bb %d new file failed\n", s, i);
       exit(1);
     }
   }
@@ -191,7 +191,7 @@ writebig(char *s)
   for(i = 0; i < MAXFILE; i++){
     ((int*)buf)[0] = i;
     if(write(fd, buf, BSIZE) != BSIZE){
-      printf("%s: error: write big file failed\n", i);
+      printf("%s: error: write big file failed\n", s, i);
       exit(1);
     }
   }
@@ -209,17 +209,17 @@ writebig(char *s)
     i = read(fd, buf, BSIZE);
     if(i == 0){
       if(n == MAXFILE - 1){
-        printf("%s: read only %d blocks from big", n);
+        printf("%s: read only %d blocks from big", s, n);
         exit(1);
       }
       break;
     } else if(i != BSIZE){
-      printf("%s: read failed %d\n", i);
+      printf("%s: read failed %d\n", s, i);
       exit(1);
     }
     if(((int*)buf)[0] != n){
       printf("%s: read content of block %d is %d\n",
-             n, ((int*)buf)[0]);
+             s, n, ((int*)buf)[0]);
       exit(1);
     }
     n++;
@@ -377,7 +377,7 @@ pipe1(char *s)
         cc = sizeof(buf);
     }
     if(total != N * SZ){
-      printf("%s: pipe1 oops 3 total %d\n", total);
+      printf("%s: pipe1 oops 3 total %d\n", s, total);
       exit(1);
     }
     close(fds[0]);
@@ -1592,7 +1592,7 @@ sbrkbasic(char *s)
   // does sbrk() return the expected failure value?
   /* a = sbrk(TOOMUCH); */
   /* if(a != (char*)0xffffffffffffffffL){ */
-  /*   printf("%s: sbrk(<toomuch>) returned %p\n", a); */
+  /*   printf("%s: sbrk(<toomuch>) returned %p\n", s, a); */
   /*   exit(1); */
   /* } */
 
@@ -1601,7 +1601,7 @@ sbrkbasic(char *s)
   for(i = 0; i < 5000; i++){
     b = sbrk(1);
     if(b != a){
-      printf("%s: sbrk test failed %d %x %x\n", i, a, b);
+      printf("%s: sbrk test failed %d %x %x\n", s, i, a, b);
       exit(1);
     }
     *b = 1;
@@ -1693,7 +1693,7 @@ kernmem(char *s)
       exit(1);
     }
     if(pid == 0){
-      printf("%s: oops could read %x = %x\n", a, *a);
+      printf("%s: oops could read %x = %x\n", s, a, *a);
       exit(1);
     }
     int xstatus;
@@ -1760,7 +1760,7 @@ sbrkfail(char *s)
     for (i = 0; i < 10*BIG; i += PGSIZE) {
       n += *(a+i);
     }
-    printf("%s: allocate a lot of memory succeeded %d\n", n);
+    printf("%s: allocate a lot of memory succeeded %d\n", s, n);
     exit(1);
   }
   wait(&xstatus);
@@ -1955,7 +1955,7 @@ stacktest(char *s)
     char *sp = (char *) r_sp();
     sp -= USTACK_LIMIT;
     // the *sp should cause a trap.
-    printf("%s: stacktest: read below stack %p\n", *sp);
+    printf("%s: stacktest: read below stack %p\n", s, *sp);
     exit(1);
   } else if(pid < 0){
     printf("%s: fork failed\n", s);
