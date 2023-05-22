@@ -377,6 +377,17 @@ int load_from_file(char* file,
   }
 
 int do_allocate(pagetable_t pagetable, struct proc* p, uint64 addr){
+  struct vma* va = get_memory_area(p, addr);
+  pte_t * pte_table = walk(pagetable, va->va_begin, 0);
+
+  if(pte_table == 0){
+    return ENOMEM;
+  }
+
+  if(*pte_table == EBADPERM){
+    return EBADPERM;
+  }
+
   return 0;
 }
 
