@@ -338,6 +338,9 @@ void userinit(void) {
 
   p = allocproc();
   initproc = p;
+  
+  // ajout d'une vma
+  add_memory_area(initproc, 0, PGSIZE);
 
   // allocate one user page and copy init's instructions
   // and data into it.
@@ -395,6 +398,9 @@ int fork(void) {
   np->sz = p->sz;
 
   np->parent = p;
+
+  // recopie de la vma du père au fils
+  vma_copy(np, p);
 
   // copy saved user registers.
   *(np->tf) = *(p->tf);

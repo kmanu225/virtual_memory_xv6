@@ -9,70 +9,94 @@
 
 static int loadseg(pde_t *pgdir, uint64 addr, struct inode *ip, uint offset, uint sz);
 
-
-
-int
-exec(char *path, char **argv)
+int exec(char *path, char **argv)
 {
+  struct vma *vma_stack;
+  struct vma *vma_heap;
+  struct vma *pvmas;
+
   char *s, *last;
   int i, off;
-  uint64 argc, sz, sp, ustack[MAXARG+1], stackbase;
+  uint64 argc, sz, sp, ustack[MAXARG + 1], stackbase;
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
   pagetable_t pagetable = 0, oldpagetable;
   struct proc *p = myproc();
 
+  // initialisation des variables
+  vma_stack = p->stack_vma;
+  vma_heap = p->heap_vma;
+  pvmas = p->memory_areas;
+
+  // réinitialisation des champs
+  p->stack_vma = 0;
+  p->heap_vma = 0;
+  p->memory_areas = 0;
+
   begin_op(ROOTDEV);
 
-  if((ip = namei(path)) == 0){
+  if ((ip = namei(path)) == 0)
+  {
     end_op(ROOTDEV);
     return -1;
   }
   ilock(ip);
 
   // Check ELF header
-  if(readi(ip, 0, (uint64)&elf, 0, sizeof(elf)) != sizeof(elf)){
+  if (readi(ip, 0, (uint64)&elf, 0, sizeof(elf)) != sizeof(elf))
+  {
     printf("exec: readi error\n");
     goto bad;
   }
-  if(elf.magic != ELF_MAGIC){
+  if (elf.magic != ELF_MAGIC)
+  {
     printf("exec: bad number error\n");
     goto bad;
   }
-  if((pagetable = proc_pagetable(p)) == 0){
+  if ((pagetable = proc_pagetable(p)) == 0)
+  {
     printf("exec: proc_pagetable error\n");
     goto bad;
   }
 
   // Load program into memory.
   sz = 0;
-  for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
-    if(readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph)){
+  for (i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph))
+  {
+    if (readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
+    {
       printf("exec: program header error\n");
     }
-    if(ph.type != ELF_PROG_LOAD)
+    if (ph.type != ELF_PROG_LOAD)
       continue;
-    if(ph.memsz < ph.filesz){
+    if (ph.memsz < ph.filesz)
+    {
       printf("exec: program header memsz < filesz\n");
       goto bad;
     }
-    if(ph.vaddr + ph.memsz < ph.vaddr){
+    if (ph.vaddr + ph.memsz < ph.vaddr)
+    {
       printf("exec: program header vaddr + memsz < vaddr\n");
       goto bad;
     }
-    if((sz = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0){
+    if ((sz = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0)
+    {
       printf("exec: uvmalloc failed\n");
       goto bad;
     }
-    if(ph.vaddr % PGSIZE != 0){
+    if (ph.vaddr % PGSIZE != 0)
+    {
       printf("exec: vaddr not page aligned\n");
       goto bad;
     }
-    if(loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0){
+    add_memory_area(p, PGROUNDDOWN(ph.vaddr), PGROUNDUP(ph.vaddr+ph.memsz));
+    if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
+    {
       printf("exec: loadseg failed\n");
       goto bad;
     }
+    
   }
   iunlockput(ip);
   end_op(ROOTDEV);
@@ -84,27 +108,32 @@ exec(char *path, char **argv)
   // Allocate two pages at the next page boundary.
   // Use the second as the user stack.
   sz = PGROUNDUP(sz);
-  if((sz = uvmalloc(pagetable, sz, sz + 2*PGSIZE)) == 0){
+  if ((sz = uvmalloc(pagetable, sz, sz + 2 * PGSIZE)) == 0)
+  {
     printf("exec: uvmalloc failed for the stack\n");
     goto bad;
   }
-  uvmclear(pagetable, sz-2*PGSIZE);
+  uvmclear(pagetable, sz - 2 * PGSIZE);
   sp = sz;
   stackbase = sp - PGSIZE;
 
   // Push argument strings, prepare rest of stack in ustack.
-  for(argc = 0; argv[argc]; argc++) {
-    if(argc >= MAXARG){
+  for (argc = 0; argv[argc]; argc++)
+  {
+    if (argc >= MAXARG)
+    {
       printf("exec: too many args\n");
       goto bad;
     }
     sp -= strlen(argv[argc]) + 1;
     sp -= sp % 16; // riscv sp must be 16-byte aligned
-    if(sp < stackbase){
+    if (sp < stackbase)
+    {
       printf("exec: sp < stackbase\n");
       goto bad;
     }
-    if(copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0){
+    if (copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
+    {
       printf("exec: copy argument strings failed\n");
       goto bad;
     }
@@ -113,13 +142,15 @@ exec(char *path, char **argv)
   ustack[argc] = 0;
 
   // push the array of argv[] pointers.
-  sp -= (argc+1) * sizeof(uint64);
+  sp -= (argc + 1) * sizeof(uint64);
   sp -= sp % 16;
-  if(sp < stackbase){
+  if (sp < stackbase)
+  {
     printf("exec: sp < stackbase, le retour\n");
     goto bad;
   }
-  if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0){
+  if (copyout(pagetable, sp, (char *)ustack, (argc + 1) * sizeof(uint64)) < 0)
+  {
     printf("exec: copy argument pointers failed\n");
     goto bad;
   }
@@ -130,31 +161,39 @@ exec(char *path, char **argv)
   p->tf->a1 = sp;
 
   // Save program name for debugging.
-  for(last=s=path; *s; s++)
-    if(*s == '/')
-      last = s+1;
+  for (last = s = path; *s; s++)
+    if (*s == '/')
+      last = s + 1;
   safestrcpy(p->name, last, sizeof(p->name));
 
-  if(p->cmd) bd_free(p->cmd);
+  if (p->cmd)
+    bd_free(p->cmd);
   p->cmd = strjoin(argv);
 
   // Commit to the user image.
   oldpagetable = p->pagetable;
   p->pagetable = pagetable;
   p->sz = sz;
-  p->tf->epc = elf.entry;  // initial program counter = main
-  p->tf->sp = sp; // initial stack pointer
+  p->tf->epc = elf.entry; // initial program counter = main
+  p->tf->sp = sp;         // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
 
   return argc; // this ends up in a0, the first argument to main(argc, argv)
 
- bad:
-  if(pagetable)
+bad:
+  // réinitialisation des champs
+  p->stack_vma = vma_stack;
+  p->heap_vma = vma_heap;
+  p->memory_areas = pvmas;
+
+  if (pagetable)
     proc_freepagetable(pagetable, sz);
-  if(ip){
+  if (ip)
+  {
     iunlockput(ip);
     end_op(ROOTDEV);
   }
+  free_vma(pvmas);
   return -1;
 }
 
@@ -168,20 +207,21 @@ loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz
   uint i, n;
   uint64 pa;
 
-  if((va % PGSIZE) != 0)
+  if ((va % PGSIZE) != 0)
     panic("loadseg: va must be page aligned");
 
-  for(i = 0; i < sz; i += PGSIZE){
+  for (i = 0; i < sz; i += PGSIZE)
+  {
     pa = walkaddr(pagetable, va + i);
-    if(pa == 0)
+    if (pa == 0)
       panic("loadseg: address should exist");
-    if(sz - i < PGSIZE)
+    if (sz - i < PGSIZE)
       n = sz - i;
     else
       n = PGSIZE;
-    if(readi(ip, 0, (uint64)pa, offset+i, n) != n)
+    if (readi(ip, 0, (uint64)pa, offset + i, n) != n)
       return -1;
   }
-  
+
   return 0;
 }
