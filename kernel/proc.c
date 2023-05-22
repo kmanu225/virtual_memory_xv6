@@ -339,7 +339,7 @@ void userinit(void) {
   p = allocproc();
   initproc = p;
   
-  // ajout d'une vma
+  // ajout d'une vma{moi}
   add_memory_area(initproc, 0, PGSIZE);
 
   // allocate one user page and copy init's instructions
