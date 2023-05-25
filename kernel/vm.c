@@ -387,37 +387,35 @@ int load_from_file(char *file,
 
 int do_allocate(pagetable_t pagetable, struct proc *p, uint64 addr)
 {
-  struct vma *va = get_memory_area(p, addr);
-  uint64 pa;
-  uint flags;
-  char *mem;
+  pte_t *page = walk(pagetable, addr, 0);
+  //void *pa;
 
-  if (va == 0)
-  {
-    return ENOVMA;
-  }
-
-  pte_t *pte_table = walk(pagetable, addr, 0);
-
-  if (pte_table == 0)
+  if (page == 0 || !(*page & PTE_V))
   {
     return ENOMEM;
   }
 
-  if ((*pte_table & PTE_U) == 0)
+  if (*page & PTE_V && !(*page & PTE_U)) // page entry exists page is valid
   {
     return EBADPERM;
   }
 
-  pa = PTE2PA(*pte_table);
-  flags = PTE_FLAGS(*pte_table);
-  mem = kalloc();
-  memmove(mem, (char *)pa, PGSIZE);
-  if (mappages(pagetable, addr, PGSIZE, (uint64)mem, flags) != 0)
-  {
-    return EMAPFAILED;
-  }
+  // // Check if [addr] is present in a VMA for process [p]
+  // if (!get_memory_area(p, addr))
+  // {
+  //   return ENOVMA;
+  // }
 
+  // // Allocate a page
+  // if (!(pa = kalloc()))
+  //   return ENOMEM;
+
+  // // Add to pagetable
+  // if (mappages(pagetable, PGROUNDDOWN(addr), PGSIZE, (uint64)pa, PTE_R | PTE_W | PTE_X | PTE_U))
+  // {
+  //   kfree(pa);
+  //   return EMAPFAILED;
+  // }
   return 0;
 }
 
