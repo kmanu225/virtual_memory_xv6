@@ -388,34 +388,42 @@ int load_from_file(char *file,
 int do_allocate(pagetable_t pagetable, struct proc *p, uint64 addr)
 {
   pte_t *page = walk(pagetable, addr, 0);
-  //void *pa;
-
-  if (page == 0 || !(*page & PTE_V))
+  void *pa;
+  // print_memory_areas(p);
+  // printf("%d\n", addr);
+  // printf("%d\n", get_memory_area(p, addr));
+  // Check if [addr] is present in a VMA for process [p]
+  struct vma *var = get_memory_area(p, addr);
+  if (var == 0)
   {
-    return ENOMEM;
+    return ENOVMA;
   }
 
-  if (*page & PTE_V && !(*page & PTE_U)) // page entry exists page is valid
+  // if (page == 0 || !(*page & PTE_V))
+  // {
+  //   return ENOMEM;
+  // }
+
+  if (page != 0 && *page & PTE_V && !(*page & PTE_U)) // page entry exists page is valid
   {
     return EBADPERM;
   }
 
-  // // Check if [addr] is present in a VMA for process [p]
-  // if (!get_memory_area(p, addr))
-  // {
-  //   return ENOVMA;
-  // }
+  if (page != 0 && *page & PTE_V && *page & PTE_U) // page entry exists page is valid
+  {
+    return 0;
+  }
+  
+  // Allocate a page
+  if (!(pa = kalloc()))
+    return ENOMEM;
 
-  // // Allocate a page
-  // if (!(pa = kalloc()))
-  //   return ENOMEM;
-
-  // // Add to pagetable
-  // if (mappages(pagetable, PGROUNDDOWN(addr), PGSIZE, (uint64)pa, PTE_R | PTE_W | PTE_X | PTE_U))
-  // {
-  //   kfree(pa);
-  //   return EMAPFAILED;
-  // }
+  // Add to pagetable
+  if (mappages(pagetable, PGROUNDDOWN(addr), PGSIZE, (uint64)pa, PTE_V | PTE_W | PTE_R | PTE_X | PTE_U))
+  {
+    kfree(pa);
+    return EMAPFAILED;
+  }
   return 0;
 }
 
