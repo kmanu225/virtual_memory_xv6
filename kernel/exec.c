@@ -38,6 +38,7 @@ int exec(char *path, char **argv)
   }
   ilock(ip);
 
+  uint64 oldsz = max_addr_in_memory_areas(p);
   // réinitialisation des champs
   p->stack_vma = 0;
   p->heap_vma = 0;
@@ -90,20 +91,18 @@ int exec(char *path, char **argv)
       printf("exec: vaddr not page aligned\n");
       goto bad;
     }
-    add_memory_area(p, PGROUNDDOWN(ph.vaddr), PGROUNDUP(ph.vaddr+ph.memsz));
+    add_memory_area(p, PGROUNDDOWN(ph.vaddr), PGROUNDUP(ph.vaddr + ph.memsz));
     if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
     {
       printf("exec: loadseg failed\n");
       goto bad;
     }
-    
   }
   iunlockput(ip);
   end_op(ROOTDEV);
   ip = 0;
 
   p = myproc();
-  uint64 oldsz = p->sz;
 
   // Allocate two pages at the next page boundary.
   // Use the second as the user stack.
@@ -116,8 +115,8 @@ int exec(char *path, char **argv)
   uvmclear(pagetable, sz - 2 * PGSIZE);
   sp = sz;
   stackbase = sp - PGSIZE;
-  p->stack_vma =  add_memory_area(p,stackbase,sz);
-  p->heap_vma =  add_memory_area(p, sz, sz);
+  p->stack_vma = add_memory_area(p, stackbase, sz);
+  p->heap_vma = add_memory_area(p, sz, sz);
 
   // Push argument strings, prepare rest of stack in ustack.
   for (argc = 0; argv[argc]; argc++)
@@ -175,7 +174,7 @@ int exec(char *path, char **argv)
   // Commit to the user image.
   oldpagetable = p->pagetable;
   p->pagetable = pagetable;
-  p->sz = sz;
+  // p->sz = sz;
   p->tf->epc = elf.entry; // initial program counter = main
   p->tf->sp = sp;         // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);

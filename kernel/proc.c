@@ -306,7 +306,7 @@ static void freeproc(struct proc *p)
     kfree((void *)p->tf);
   p->tf = 0;
   if (p->pagetable)
-    proc_freepagetable(p->pagetable, p->sz);
+    proc_freepagetable(p->pagetable, max_addr_in_memory_areas(p));
   if (p->cmd)
     bd_free(p->cmd);
   p->cmd = 0;
@@ -318,7 +318,7 @@ static void freeproc(struct proc *p)
   p->memory_areas = 0;
   p->stack_vma = 0;
   p->heap_vma = 0;
-  p->sz = 0;
+  // p->sz = 0;
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
@@ -382,7 +382,7 @@ void userinit(void)
   // allocate one user page and copy init's instructions
   // and data into it.
   uvminit(p->pagetable, initcode, sizeof(initcode));
-  p->sz = PGSIZE;
+  // p->sz = PGSIZE;
 
   // prepare for the very first "return" from kernel to user.
   p->tf->epc = 0;     // user program counter
@@ -406,7 +406,7 @@ int growproc(long n)
   uint64 va_end = p->heap_vma->va_end;
   va_end+=n;
 
-  sz = p->sz;
+  sz = max_addr_in_memory_areas(p);
   if (va_begin <= va_end && (va_end - va_begin < HEAP_THRESHOLD))
   {
     p->heap_vma->va_end = va_end;
@@ -422,7 +422,7 @@ int growproc(long n)
     return -1;
   }
 
-  p->sz = va_end;
+  // p->sz = va_end;
   return 0;
 }
 
@@ -441,13 +441,13 @@ int fork(void)
   }
 
   // Copy user memory from parent to child.
-  if (uvmcopy(p->pagetable, np->pagetable, p->sz) < 0)
+  if (uvmcopy(p->pagetable, np->pagetable, max_addr_in_memory_areas(p)) < 0)
   {
     freeproc(np);
     release(&np->lock);
     return -1;
   }
-  np->sz = p->sz;
+  // np->sz = p->sz;
 
   np->parent = p;
 

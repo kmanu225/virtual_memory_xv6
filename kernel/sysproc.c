@@ -46,7 +46,7 @@ sys_sbrk(void)
 
   if(argaddr(0, &n) < 0)
     return -1;
-  addr = myproc()->sz;
+  addr =myproc()->heap_vma->va_end;
   if(growproc((long)n) < 0)
     return -1;
   return addr;

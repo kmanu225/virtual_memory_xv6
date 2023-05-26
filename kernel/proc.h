@@ -144,7 +144,7 @@ struct proc {
 
   // these are private to the process, so p->lock need not be held.
   uint64 kstack;               // Virtual address of kernel stack
-  uint64 sz;                   // Size of process memory (bytes)
+  // uint64 sz;                   // Size of process memory (bytes)
   struct spinlock vma_lock;
   struct vma * memory_areas;   // VMAs du processus
   struct vma * stack_vma;      // Une VMA particulière pour la pile
