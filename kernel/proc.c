@@ -393,6 +393,10 @@ void userinit(void)
   p->cwd = namei("/");
   p->state = RUNNABLE;
 
+  // p->heap_vma->vma_flags = VMA_R | VMA_W;  // Ajout des permissions requises
+  // p->stack_vma->vma_flags = VMA_R | VMA_W; // Ajout des permissions requises
+  
+
   release(&p->lock);
 }
 
@@ -404,7 +408,7 @@ int growproc(long n)
   struct proc *p = myproc();
   uint64 va_begin = p->heap_vma->va_begin;
   uint64 va_end = p->heap_vma->va_end;
-  va_end+=n;
+  va_end += n;
 
   sz = max_addr_in_memory_areas(p);
   if (va_begin <= va_end && (va_end - va_begin < HEAP_THRESHOLD))
@@ -416,9 +420,9 @@ int growproc(long n)
     sz = uvmdealloc(p->pagetable, sz, sz + n);
     return -1;
   }
-  else if(va_begin > va_end || (va_end - va_begin >= HEAP_THRESHOLD))
+  else if (va_begin > va_end || (va_end - va_begin >= HEAP_THRESHOLD))
   {
-    va_end-=n;
+    va_end -= n;
     return -1;
   }
 

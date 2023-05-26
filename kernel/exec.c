@@ -91,7 +91,10 @@ int exec(char *path, char **argv)
       printf("exec: vaddr not page aligned\n");
       goto bad;
     }
-    add_memory_area(p, PGROUNDDOWN(ph.vaddr), PGROUNDUP(ph.vaddr + ph.memsz));
+    
+    struct vma * vma_segment = add_memory_area(p, PGROUNDDOWN(ph.vaddr), PGROUNDUP(ph.vaddr + ph.memsz));
+    vma_segment->vma_flags = VMA_R | VMA_W | VMA_X;
+
     if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
     {
       printf("exec: loadseg failed\n");
@@ -116,7 +119,10 @@ int exec(char *path, char **argv)
   sp = USTACK_TOP;
   stackbase = USTACK_BOTTOM;
   p->stack_vma = add_memory_area(p, USTACK_BOTTOM, USTACK_TOP);
+  p->stack_vma->vma_flags = VMA_R | VMA_W; // Ajout des permissions requises
+
   p->heap_vma = add_memory_area(p, sz, sz);
+  p->heap_vma->vma_flags = VMA_R | VMA_W; // Ajout des permissions requises
 
   // Push argument strings, prepare rest of stack in ustack.
   for (argc = 0; argv[argc]; argc++)
@@ -193,6 +199,7 @@ bad:
   p->stack_vma = vma_stack;
   p->heap_vma = vma_heap;
   p->memory_areas = pvmas;
+
   return -1;
 }
 
