@@ -377,7 +377,8 @@ void userinit(void)
   initproc = p;
 
   // ajout d'une vma{moi}
-  add_memory_area(initproc, 0, PGSIZE);
+  struct vma *vma_segment = add_memory_area(initproc, 0, PGSIZE);
+  vma_segment->vma_flags = VMA_R | VMA_W | VMA_X;
 
   // allocate one user page and copy init's instructions
   // and data into it.
