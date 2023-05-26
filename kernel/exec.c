@@ -7,7 +7,7 @@
 #include "defs.h"
 #include "elf.h"
 
-static int loadseg(pde_t *pgdir, uint64 addr, struct inode *ip, uint offset, uint sz);
+// static int loadseg(pde_t *pgdir, uint64 addr, struct inode *ip, uint offset, uint sz);
 
 int exec(char *path, char **argv)
 {
@@ -81,25 +81,28 @@ int exec(char *path, char **argv)
       printf("exec: program header vaddr + memsz < vaddr\n");
       goto bad;
     }
-    if ((sz = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0)
-    {
-      printf("exec: uvmalloc failed\n");
-      goto bad;
-    }
+    // if ((sz = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0)
+    // {
+    //   printf("exec: uvmalloc failed\n");
+    //   goto bad;
+    // }
     if (ph.vaddr % PGSIZE != 0)
     {
       printf("exec: vaddr not page aligned\n");
       goto bad;
     }
-    
+    sz = max_addr_in_memory_areas(p);
     struct vma * vma_segment = add_memory_area(p, PGROUNDDOWN(ph.vaddr), PGROUNDUP(ph.vaddr + ph.memsz));
+    vma_segment->file = path;
+    vma_segment->file_offset = ph.off;
+    vma_segment->file_nbytes = ph.filesz;
     vma_segment->vma_flags = VMA_R | VMA_W | VMA_X;
 
-    if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
-    {
-      printf("exec: loadseg failed\n");
-      goto bad;
-    }
+    // if (loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
+    // {
+    //   printf("exec: loadseg failed\n");
+    //   goto bad;
+    // }
   }
   iunlockput(ip);
   end_op(ROOTDEV);
@@ -207,27 +210,27 @@ bad:
 // va must be page-aligned
 // and the pages from va to va+sz must already be mapped.
 // Returns 0 on success, -1 on failure.
-static int
-loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz)
-{
-  uint i, n;
-  uint64 pa;
+// static int
+// loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz)
+// {
+//   uint i, n;
+//   uint64 pa;
 
-  if ((va % PGSIZE) != 0)
-    panic("loadseg: va must be page aligned");
+//   if ((va % PGSIZE) != 0)
+//     panic("loadseg: va must be page aligned");
 
-  for (i = 0; i < sz; i += PGSIZE)
-  {
-    pa = walkaddr(pagetable, va + i);
-    if (pa == 0)
-      panic("loadseg: address should exist");
-    if (sz - i < PGSIZE)
-      n = sz - i;
-    else
-      n = PGSIZE;
-    if (readi(ip, 0, (uint64)pa, offset + i, n) != n)
-      return -1;
-  }
+//   for (i = 0; i < sz; i += PGSIZE)
+//   {
+//     pa = walkaddr(pagetable, va + i);
+//     if (pa == 0)
+//       panic("loadseg: address should exist");
+//     if (sz - i < PGSIZE)
+//       n = sz - i;
+//     else
+//       n = PGSIZE;
+//     if (readi(ip, 0, (uint64)pa, offset + i, n) != n)
+//       return -1;
+//   }
 
-  return 0;
-}
+//   return 0;
+// }
