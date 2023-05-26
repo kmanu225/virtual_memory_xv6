@@ -413,7 +413,7 @@ int do_allocate(pagetable_t pagetable, struct proc *p, uint64 addr)
   {
     return 0;
   }
-  
+
   // Allocate a page
   if (!(pa = kalloc()))
     return ENOMEM;
@@ -429,6 +429,19 @@ int do_allocate(pagetable_t pagetable, struct proc *p, uint64 addr)
 
 int do_allocate_range(pagetable_t pagetable, struct proc *p, uint64 addr, uint64 len)
 {
+  uint64 addr_i;
+  acquire(&p->vma_lock);
+  for (addr_i = PGROUNDDOWN(addr); addr_i < PGROUNDUP(addr + len); addr_i += PGSIZE)
+  {
+
+    int check = do_allocate(pagetable, p, addr_i);
+    if (check != 0)
+    {
+      release(&p->vma_lock);
+      return check;
+    }
+  }
+  release(&p->vma_lock);
   return 0;
 }
 
