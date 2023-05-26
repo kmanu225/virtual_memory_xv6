@@ -191,7 +191,7 @@ void            plicinithart(void);
 int             plic_claim(void);
 void            plic_complete(int);
 
-int do_allocate(pagetable_t pagetable, struct proc*, uint64 addr);
+int do_allocate(pagetable_t pagetable, struct proc*, uint64 addr, uint64 scause);
 
 // virtio_disk.c
 void            virtio_disk_init(int);

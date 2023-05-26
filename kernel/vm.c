@@ -385,7 +385,7 @@ int load_from_file(char *file,
   return 0;
 }
 
-int do_allocate(pagetable_t pagetable, struct proc *p, uint64 addr)
+int do_allocate(pagetable_t pagetable, struct proc *p, uint64 addr, uint64 scause)
 {
   pte_t *page = walk(pagetable, addr, 0);
   void *pa;
@@ -427,14 +427,14 @@ int do_allocate(pagetable_t pagetable, struct proc *p, uint64 addr)
   return 0;
 }
 
-int do_allocate_range(pagetable_t pagetable, struct proc *p, uint64 addr, uint64 len)
+int do_allocate_range(pagetable_t pagetable, struct proc *p, uint64 addr, uint64 len, uint64 scause)
 {
   uint64 addr_i;
   acquire(&p->vma_lock);
   for (addr_i = PGROUNDDOWN(addr); addr_i < PGROUNDUP(addr + len); addr_i += PGSIZE)
   {
 
-    int check = do_allocate(pagetable, p, addr_i);
+    int check = do_allocate(pagetable, p, addr_i, scause);
     if (check != 0)
     {
       release(&p->vma_lock);
@@ -452,7 +452,7 @@ int copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
 
-  int f = do_allocate_range(pagetable, myproc(), dstva, len);
+  int f = do_allocate_range(pagetable, myproc(), dstva, len, CAUSE_W);
   if (f < 0)
     return -1;
 
@@ -481,7 +481,7 @@ int copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
   uint64 n, va0, pa0;
 
-  int f = do_allocate_range(pagetable, myproc(), srcva, len);
+  int f = do_allocate_range(pagetable, myproc(), srcva, len, CAUSE_R);
   if (f < 0)
     return -1;
 
@@ -516,7 +516,7 @@ int copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   while (got_null == 0 && max > 0)
   {
     va0 = PGROUNDDOWN(srcva);
-    int f = do_allocate(pagetable, myproc(), srcva);
+    int f = do_allocate(pagetable, myproc(), srcva, CAUSE_R);
     if (f < 0)
     {
       release(&myproc()->vma_lock);
