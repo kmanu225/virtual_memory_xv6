@@ -389,10 +389,6 @@ int do_allocate(pagetable_t pagetable, struct proc *p, uint64 addr, uint64 scaus
 {
   pte_t *page = walk(pagetable, addr, 0);
   void *pa;
-  // print_memory_areas(p);
-  // printf("%d\n", addr);
-  // printf("%d\n", get_memory_area(p, addr));
-  
   // Check if [addr] is present in a VMA for process [p]
   struct vma *var = get_memory_area(p, addr);
   if (var == 0)
@@ -410,12 +406,12 @@ int do_allocate(pagetable_t pagetable, struct proc *p, uint64 addr, uint64 scaus
     return EBADPERM;
   }
 
-  if (page != 0 && *page & PTE_V && !(*page & PTE_U)) // page entry exists page is valid
+  if (page != 0 && *page & PTE_V && !(*page & PTE_U))
   {
     return EBADPERM;
   }
 
-  if (page != 0 && *page & PTE_V && *page & PTE_U) // page entry exists page is valid
+  if (page != 0 && *page & PTE_V && *page & PTE_U)
   {
     return 0;
   }
@@ -435,8 +431,51 @@ int do_allocate(pagetable_t pagetable, struct proc *p, uint64 addr, uint64 scaus
     kfree(pa);
     return EMAPFAILED;
   }
+
+  if (var->file)
+  {
+    uint64 file_start_offset = var->file_offset;
+    uint64 nbytes = var->file_nbytes;
+
+    uint64 page_start = PGROUNDDOWN(addr);
+    uint64 page_end = page_start + PGSIZE;
+
+    if (file_start_offset >= var->file_offset + var->file_nbytes || page_end <= var->vma_start || page_start >= var->vma_end)
+    {
+      return 0;
+    }
+
+    if (file_start_offset < var->file_offset)
+    {
+      nbytes -= var->file_offset - file_start_offset;
+      file_start_offset = var->file_offset;
+    }
+
+    if (nbytes > var->file_offset + var->file_nbytes - file_start_offset)
+    {
+      nbytes = var->file_offset + var->file_nbytes - file_start_offset;
+    }
+
+    uint64 file_end_offset = file_start_offset + nbytes;
+    if (file_end_offset > var->file_offset + var->file_nbytes)
+    {
+      nbytes -= file_end_offset - (var->file_offset + var->file_nbytes);
+    }
+
+    release(&p->vma_lock);
+    int res = load_from_file(var->file, file_start_offset, pa, nbytes);
+    acquire(&p->vma_lock);
+
+    if (res != 0)
+    {
+      kfree(pa);
+      return ENOFILE;
+    }
+  }
+
   return 0;
 }
+
 
 int do_allocate_range(pagetable_t pagetable, struct proc *p, uint64 addr, uint64 len, uint64 scause)
 {
